@@ -1,11 +1,13 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: Copyright The LanceDB Authors
 
-import duckdb
 import pyarrow as pa
+import pytest
 
 import lancedb
 from lancedb.integrations.pyarrow import PyarrowDatasetAdapter
+
+duckdb = pytest.importorskip("duckdb")
 
 
 def test_basic_query(tmp_path):

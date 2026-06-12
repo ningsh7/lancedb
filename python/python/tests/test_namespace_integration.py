@@ -27,6 +27,9 @@ from typing import Dict, Optional
 
 import pyarrow as pa
 import pytest
+
+pytest.importorskip("lance.namespace")
+
 from lance.namespace import (
     DeclareTableRequest,
     DeclareTableResponse,

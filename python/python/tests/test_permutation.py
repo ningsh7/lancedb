@@ -896,7 +896,8 @@ def test_identity_permutation(mem_db):
 def test_transform_fn(mem_db):
     import numpy as np
     import pandas as pd
-    import polars as pl
+
+    pl = pytest.importorskip("polars")
 
     tbl = mem_db.create_table(
         "test_table", pa.table({"id": range(10), "value": range(10)})

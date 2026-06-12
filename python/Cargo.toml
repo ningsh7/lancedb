@@ -26,7 +26,7 @@ lance-namespace-impls.workspace = true
 lance-io.workspace = true
 env_logger.workspace = true
 log.workspace = true
-pyo3 = { version = "0.28", features = ["extension-module", "abi3-py39", "chrono"] }
+pyo3 = { version = "0.28", features = ["extension-module", "chrono"] }
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 pyo3-async-runtimes = { version = "0.28", features = [
     "attributes",
@@ -43,10 +43,10 @@ libc = "0.2"
 [build-dependencies]
 pyo3-build-config = { version = "0.28", features = [
     "extension-module",
-    "abi3-py39",
 ] }
 
 [features]
-default = ["remote",  "lancedb/aws", "lancedb/gcs", "lancedb/azure", "lancedb/dynamodb", "lancedb/oss", "lancedb/huggingface"]
+default = ["abi3", "remote", "lancedb/aws", "lancedb/gcs", "lancedb/azure", "lancedb/dynamodb", "lancedb/oss", "lancedb/huggingface"]
+abi3 = ["pyo3/abi3-py39", "pyo3-build-config/abi3-py39"]
 fp16kernels = ["lancedb/fp16kernels"]
 remote = ["lancedb/remote"]

@@ -6,7 +6,6 @@ import os
 import pathlib
 from typing import Optional
 
-import lance
 from lancedb.conftest import MockTextEmbeddingFunction
 from lancedb.embeddings.base import EmbeddingFunctionConfig
 from lancedb.embeddings.registry import EmbeddingFunctionRegistry
@@ -22,11 +21,23 @@ from lancedb.table import (
 )
 import pyarrow as pa
 import pandas as pd
-import polars as pl
 import pytest
 import lancedb
 from lancedb.util import get_uri_scheme, join_uri, value_to_sql
 from utils import exception_output
+
+try:
+    import lance
+except ImportError:
+    lance = None
+
+try:
+    import polars as pl
+except ImportError:
+    pl = None
+
+requires_lance = pytest.mark.skipif(lance is None, reason="lance is not installed")
+requires_polars = pytest.mark.skipif(pl is None, reason="polars is not installed")
 
 
 def test_normalize_uri():
@@ -446,17 +457,29 @@ class TestModel(lancedb.pydantic.LanceModel):
         lambda: pa.table({"a": [1], "b": [2]}),
         lambda: pa.table({"a": [1], "b": [2]}).to_reader(),
         lambda: iter(pa.table({"a": [1], "b": [2]}).to_batches()),
-        lambda: lance.write_dataset(
-            pa.table({"a": [1], "b": [2]}),
-            "memory://test",
+        pytest.param(
+            lambda: lance.write_dataset(
+                pa.table({"a": [1], "b": [2]}),
+                "memory://test",
+            ),
+            marks=requires_lance,
         ),
-        lambda: lance.write_dataset(
-            pa.table({"a": [1], "b": [2]}),
-            "memory://test",
-        ).scanner(),
+        pytest.param(
+            lambda: lance.write_dataset(
+                pa.table({"a": [1], "b": [2]}),
+                "memory://test",
+            ).scanner(),
+            marks=requires_lance,
+        ),
         lambda: pd.DataFrame({"a": [1], "b": [2]}),
-        lambda: pl.DataFrame({"a": [1], "b": [2]}),
-        lambda: pl.LazyFrame({"a": [1], "b": [2]}),
+        pytest.param(
+            lambda: pl.DataFrame({"a": [1], "b": [2]}),
+            marks=requires_polars,
+        ),
+        pytest.param(
+            lambda: pl.LazyFrame({"a": [1], "b": [2]}),
+            marks=requires_polars,
+        ),
         lambda: [TestModel(a=1, b=2)],
     ],
     ids=[
@@ -627,7 +650,10 @@ def test_infer_target_schema_with_vector_embedding_names():
         [{"id": 1, "text": "hello"}],
         pa.RecordBatch.from_pylist([{"id": 1, "text": "hello"}]),
         pd.DataFrame({"id": [1], "text": ["hello"]}),
-        pl.DataFrame({"id": [1], "text": ["hello"]}),
+        pytest.param(
+            pl.DataFrame({"id": [1], "text": ["hello"]}) if pl is not None else None,
+            marks=requires_polars,
+        ),
     ],
     ids=["rows", "pa.RecordBatch", "pd.DataFrame", "pl.DataFrame"],
 )
@@ -681,7 +707,7 @@ def test_sanitize_data(
         from conftest import pandas_string_type
 
         # polars uses large_string, pandas 3.0+ uses large_string, others use string
-        if isinstance(data, pl.DataFrame):
+        if pl is not None and isinstance(data, pl.DataFrame):
             text_type = pa.large_utf8()
         elif isinstance(data, pd.DataFrame):
             text_type = pandas_string_type()

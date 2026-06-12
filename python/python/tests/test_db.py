@@ -491,7 +491,7 @@ async def test_create_table_v2_manifest_paths_async(tmp_path):
 @pytest.mark.asyncio
 async def test_create_table_stable_row_ids_via_storage_options(tmp_path):
     """Test stable_row_ids via storage_options at connect time."""
-    import lance
+    lance = pytest.importorskip("lance")
 
     # Connect with stable row IDs enabled as default for new tables
     db_with = await lancedb.connect_async(
@@ -558,7 +558,7 @@ def test_create_table_stable_row_ids_via_storage_options_sync(tmp_path):
 @pytest.mark.asyncio
 async def test_create_table_stable_row_ids_table_level_override(tmp_path):
     """Test that stable_row_ids can be enabled/disabled at create_table level."""
-    import lance
+    lance = pytest.importorskip("lance")
 
     # Connect without any stable row ID setting
     db_default = await lancedb.connect_async(tmp_path)
@@ -1097,7 +1097,7 @@ def test_clone_table_deep_clone_fails(tmp_path):
 @pytest.mark.skipif(sys.platform == "win32", reason="Namespace client issues")
 def test_namespace_client_native_storage(tmp_path):
     """Test namespace_client() returns DirectoryNamespace for native storage."""
-    from lance.namespace import DirectoryNamespace
+    DirectoryNamespace = pytest.importorskip("lance.namespace").DirectoryNamespace
 
     db = lancedb.connect(tmp_path)
     ns_client = db.namespace_client()
@@ -1109,7 +1109,7 @@ def test_namespace_client_native_storage(tmp_path):
 @pytest.mark.skipif(sys.platform == "win32", reason="Namespace client issues")
 def test_namespace_client_with_storage_options(tmp_path):
     """Test namespace_client() preserves storage options."""
-    from lance.namespace import DirectoryNamespace
+    DirectoryNamespace = pytest.importorskip("lance.namespace").DirectoryNamespace
 
     storage_options = {"timeout": "10s"}
     db = lancedb.connect(tmp_path, storage_options=storage_options)
@@ -1121,6 +1121,8 @@ def test_namespace_client_with_storage_options(tmp_path):
 @pytest.mark.skipif(sys.platform == "win32", reason="Namespace client issues")
 def test_namespace_client_operations(tmp_path):
     """Test that namespace_client() returns a functional namespace client."""
+    pytest.importorskip("lance.namespace")
+
     db = lancedb.connect(tmp_path)
     ns_client = db.namespace_client()
 
@@ -1141,7 +1143,7 @@ def test_namespace_client_operations(tmp_path):
 @pytest.mark.skipif(sys.platform == "win32", reason="Namespace client issues")
 def test_namespace_client_namespace_connection(tmp_path):
     """Test namespace_client() returns the backing client for namespace connections."""
-    from lance.namespace import DirectoryNamespace
+    DirectoryNamespace = pytest.importorskip("lance.namespace").DirectoryNamespace
 
     db = lancedb.connect_namespace("dir", {"root": str(tmp_path)})
     ns_client = db.namespace_client()

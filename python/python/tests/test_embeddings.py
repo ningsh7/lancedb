@@ -5,12 +5,11 @@ import os
 from typing import List, Optional, Union
 from unittest.mock import MagicMock, patch
 
-import lance
 import lancedb
 import numpy as np
 import pyarrow as pa
-import pytest
 import pandas as pd
+import pytest
 from lancedb.conftest import MockTextEmbeddingFunction
 from lancedb.embeddings import (
     EmbeddingFunctionConfig,
@@ -20,6 +19,8 @@ from lancedb.embeddings.base import TextEmbeddingFunction
 from lancedb.embeddings.registry import get_registry, register
 from lancedb.embeddings.utils import retry
 from lancedb.pydantic import LanceModel, Vector
+
+lance = pytest.importorskip("lance")
 
 
 def mock_embed_func(input_data):

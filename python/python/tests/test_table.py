@@ -15,7 +15,6 @@ import lancedb
 from lancedb.dependencies import _PANDAS_AVAILABLE
 from lancedb.index import BTree, FTS, HnswFlat, HnswPq, HnswSq, IvfPq
 import numpy as np
-import polars as pl
 import pyarrow as pa
 import pyarrow.dataset
 import pytest
@@ -761,6 +760,7 @@ def test_add_progress_callback_error(mem_db: DBConnection):
 
 
 def test_polars(mem_db: DBConnection):
+    pl = pytest.importorskip("polars")
     data = {
         "vector": [[3.1, 4.1], [5.9, 26.5]],
         "item": ["foo", "bar"],

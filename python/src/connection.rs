@@ -556,14 +556,29 @@ pub fn connect(
 ) -> PyResult<Bound<'_, PyAny>> {
     future_into_py(py, async move {
         let mut builder = lancedb::connect(&uri);
-        if let Some(api_key) = api_key {
-            builder = builder.api_key(&api_key);
+        #[cfg(feature = "remote")]
+        {
+            if let Some(api_key) = api_key {
+                builder = builder.api_key(&api_key);
+            }
+            if let Some(region) = region {
+                builder = builder.region(&region);
+            }
+            if let Some(host_override) = host_override {
+                builder = builder.host_override(&host_override);
+            }
         }
-        if let Some(region) = region {
-            builder = builder.region(&region);
-        }
-        if let Some(host_override) = host_override {
-            builder = builder.host_override(&host_override);
+        #[cfg(not(feature = "remote"))]
+        {
+            if api_key.is_some()
+                || region.is_some()
+                || host_override.is_some()
+                || client_config.is_some()
+            {
+                return Err(PyValueError::new_err(
+                    "remote connection options require the 'remote' feature",
+                ));
+            }
         }
         if let Some(read_consistency_interval) = read_consistency_interval {
             let read_consistency_interval = Duration::from_secs_f64(read_consistency_interval);

@@ -1,6 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: Copyright The LanceDB Authors
 
+import pytest
+
+pytest.importorskip("polars")
+
 # --8<-- [start:import-lancedb]
 import lancedb
 
@@ -25,7 +29,6 @@ import polars as pl
 from lancedb.pydantic import Vector, LanceModel
 
 # --8<-- [end:import-lancedb-pydantic]
-import pytest
 
 
 # --8<-- [start:make_batches]

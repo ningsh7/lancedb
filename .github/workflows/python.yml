@@ -114,22 +114,20 @@ jobs:
           pip install mlx
       - name: Doctest
         run: pytest --doctest-modules python/lancedb
-  linux:
-    name: "Linux: python-3.${{ matrix.python-minor-version }}"
-    timeout-minutes: 30
-    strategy:
-      matrix:
-        python-minor-version: ["10", "13"]
+  linux-build:
+    name: "Linux: build wheels"
+    timeout-minutes: 60
     runs-on: "ubuntu-24.04"
     defaults:
       run:
         shell: bash
-        working-directory: python
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           lfs: true
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: Swatinem/rust-cache@v2
       - name: Install protobuf
         run: |
           sudo apt update
@@ -137,20 +135,118 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: 3.${{ matrix.python-minor-version }}
+          python-version: "3.12"
+      - name: Set up free-threaded Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14t"
       - uses: ./.github/workflows/build_linux_wheel
         with:
+          python-minor-version: 12
           args: --profile ci
-      - uses: ./.github/workflows/run_tests
+      - name: Upload abi3 wheel
+        uses: actions/upload-artifact@v4
         with:
-          integration: true
-      - name: Test without pylance or pandas
+          name: python-wheel-abi3
+          path: target/wheels/lancedb-*-cp39-abi3-*.whl
+          if-no-files-found: error
+      - name: Install maturin
+        run: python -m pip install maturin==1.12.4
+      - name: Build free-threaded wheel
+        working-directory: python
         run: |
-          pip uninstall -y pylance pandas
-          pytest -vv python/tests/test_table.py
+          maturin build --profile ci \
+            --no-default-features \
+            --features remote,lancedb/aws,lancedb/gcs,lancedb/azure,lancedb/dynamodb,lancedb/oss,lancedb/huggingface \
+            -i python3.14t
+      - name: Upload free-threaded wheel
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-wheel-cp314t
+          path: target/wheels/lancedb-*-cp314t-*.whl
+          if-no-files-found: error
       # Make sure wheels are not included in the Rust cache
       - name: Delete wheels
         run: rm -rf target/wheels
+
+  linux:
+    name: "Linux: Python ${{ matrix.python }}"
+    needs: linux-build
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - python: "3.10"
+            artifact: python-wheel-abi3
+            free_threaded: false
+          - python: "3.12"
+            artifact: python-wheel-abi3
+            free_threaded: false
+          - python: "3.14t"
+            artifact: python-wheel-cp314t
+            free_threaded: true
+    runs-on: "ubuntu-24.04"
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Download wheel
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: wheels
+      - name: Install lancedb
+        if: ${{ !matrix.free_threaded }}
+        run: |
+          python -m pip install --upgrade pip
+          wheel="$(ls "$PWD"/wheels/*.whl | head -1)"
+          python -m pip install --extra-index-url https://pypi.fury.io/lance-format/ --extra-index-url https://pypi.fury.io/lancedb/ "lancedb[tests] @ file://$wheel"
+      - name: Install lancedb
+        if: ${{ matrix.free_threaded }}
+        run: |
+          python -m pip install --upgrade pip
+          wheel="$(ls "$PWD"/wheels/*.whl | head -1)"
+          python -m pip install --no-deps "$wheel"
+          python - <<'PY' > requirements-3.14t.txt
+          import tomllib
+          from pathlib import Path
+
+          pyproject = tomllib.loads(Path("python/pyproject.toml").read_text())
+          skip = ("duckdb", "datafusion", "polars", "pylance")
+          requirements = (
+              pyproject["project"]["dependencies"]
+              + pyproject["project"]["optional-dependencies"]["tests"]
+          )
+          for requirement in requirements:
+              if not requirement.lower().startswith(skip):
+                  print(requirement)
+          PY
+          python -m pip install --extra-index-url https://pypi.fury.io/lance-format/ --extra-index-url https://pypi.fury.io/lancedb/ --only-binary :all: -r requirements-3.14t.txt
+      - name: Setup localstack for integration tests
+        run: docker compose up --detach --wait
+      - name: pytest (with integration)
+        if: ${{ !matrix.free_threaded }}
+        run: pytest -m "not slow" -vv --durations=30 python/python/tests
+      - name: pytest (with integration, free-threaded)
+        if: ${{ matrix.free_threaded }}
+        timeout-minutes: 30
+        run: |
+          pytest -m "not slow" -vv --durations=30 \
+            -W "ignore:The global interpreter lock \\(GIL\\) has been enabled.*:RuntimeWarning" \
+            python/python/tests
+      - name: Test without pylance or pandas
+        run: |
+          python -m pip uninstall -y pylance pandas
+          pytest -vv python/python/tests/test_table.py
   platform:
     name: "Mac"
     timeout-minutes: 30

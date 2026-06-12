@@ -1,6 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: Copyright The LanceDB Authors
 
+import pytest
+
+pytest.importorskip("datafusion")
+pytest.importorskip("lance")
+pytest.importorskip("polars")
+
 # --8<-- [start:import-lancedb]
 import lancedb
 
@@ -45,7 +51,6 @@ from lance import FFILanceTableProvider
 from pydantic import BaseModel
 
 # --8<-- [end:import-pydantic-basemodel]
-import pytest
 
 
 # --8<-- [start:class-Content]

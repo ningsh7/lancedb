@@ -36,6 +36,7 @@ impl<T> PythonErrorExt<T> for std::result::Result<T, LanceError> {
                 LanceError::NotSupported { .. } => {
                     Err(PyNotImplementedError::new_err(err.to_string()))
                 }
+                #[cfg(feature = "remote")]
                 LanceError::Http {
                     request_id,
                     source,
@@ -65,6 +66,7 @@ impl<T> PythonErrorExt<T> for std::result::Result<T, LanceError> {
 
                     Err(PyErr::from_value(err))
                 }),
+                #[cfg(feature = "remote")]
                 LanceError::Retry {
                     request_id,
                     request_failures,
